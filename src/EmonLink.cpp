@@ -1,4 +1,4 @@
-*
+/*
  * This app is the emoncms node for inside/outside environment monitors
  * This class does the comms to emonCMS, both simple provisioning and reporting of data
  * it calls our API on the emonCMS server, and fetches some data

@@ -76,7 +76,7 @@ void setup() {
     Particle.variable("pressure", pressure); 
     Particle.variable("humidity", humidity); 
     
-    // Initialise our shared variabled
+    // Initialise our shared variables
     temperature = 255.0;
     enclosureTemperature = 255.0;
     humidity = 255.0;

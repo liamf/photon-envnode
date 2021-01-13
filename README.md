@@ -1,7 +1,7 @@
 # photon-envnode
 Particle Photon-powered emonCMs environment monitoring nodes
 
-The nodes use BME280 and/or DB18B20 sensors to read temperature, humidity and pressure.
+The nodes use BME280 and/or DS18B20 sensors to read temperature, humidity and pressure.
 
 Nodes publish sensors readings in a few ways
 * by exposting Particle variables
