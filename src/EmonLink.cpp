@@ -43,15 +43,15 @@ http_header_t headers[] = {
 
  EmonLink::EmonLink(void)
  {
+     
      _isProvisioned = false;
+     _debugLogging = false;
      
      // Default node hostname on the local network
      _hostName = "emonpi.oakglen.park";
      _hostPort = 5000;
      
      _myID = System.deviceID();
-     
-     // Get out Particle console device name
      
  };
  
@@ -90,7 +90,48 @@ http_header_t headers[] = {
 // Post data to EmonCMS: external temp if we have a DS18 sensor
 bool EmonLink::postExternalSensorData(float temp)
 {
-    return false;
+    // Build a JSON payload
+    JsonWriterStatic<512> jw;
+    char trimmedValue[32];
+    bool stat = true;
+    
+    // Sometimes, the sensor returns "NAN" for a reading.
+    // In that case, just discard the report. It happens sufficiently rarely/randomly that we can just ignore
+    
+    if( temp != NAN ) 
+    {
+    
+        {
+            JsonWriterAutoObject obj(&jw);
+            
+    		// Add various types of data
+    		snprintf(trimmedValue,sizeof(trimmedValue)-1,"%.2f", temp);
+    		if( strncmp(trimmedValue,"nan", 3) != 0) {
+    		    jw.insertKeyValue("extTemp", trimmedValue);
+    		}
+        }
+        
+        
+        http_request_t request; 
+        http_response_t response;  
+        
+        // EmonCMS post to the node on port 80
+        request.hostname = _hostName;
+        request.port = 80;
+        request.path = String::format("/input/post?node=%s&fulljson=%s&apikey=%s", _deviceName.c_str(),jw.getBuffer(), _apiKey.c_str());
+        
+        http.get(request, response, headers);   
+        
+        stat = (response.status == 200);
+        
+        // Log this via the hardcoded webhook, if debugging is turned on
+        if( _debugLogging)
+        {
+            Particle.publish("sensDebugLog", request.path, PRIVATE);    
+        }
+    }
+    
+    return stat;
 }        
         
 // Post data to EmonCMS: internal data from the BME280, if one is fitted
@@ -99,36 +140,55 @@ bool EmonLink::postInternalSensorData(float temp, float pressure, float humidity
     // Build a JSON payload
     JsonWriterStatic<512> jw;
     char trimmedValue[32];
+    bool stat = true;
     
+    // Sometimes, the sensor returns "NAN" for a reading.
+    // In that case, just discard the report. It happens sufficiently rarely/randomly that we can just ignore
+    
+    if( temp != NAN && pressure != NAN && humidity != NAN ) 
     {
-        JsonWriterAutoObject obj(&jw);
+    
+        {
+            JsonWriterAutoObject obj(&jw);
+            
+    		// Add various types of data
+    		snprintf(trimmedValue,sizeof(trimmedValue)-1,"%.2f", temp);
+    		if( strncmp(trimmedValue,"nan", 3) != 0) {
+    		    jw.insertKeyValue("encTemp", trimmedValue);
+    		}
+    		
+    		snprintf(trimmedValue,sizeof(trimmedValue)-1, "%.2f", pressure);
+    		if( strncmp(trimmedValue,"nan", 3) != 0) {
+    		    jw.insertKeyValue("pressure", trimmedValue);
+    		}    		
+    		
+    		snprintf(trimmedValue,sizeof(trimmedValue)-1, "%.2f", humidity);
+    		if( strncmp(trimmedValue,"nan", 3) != 0) {
+    		    jw.insertKeyValue("humidity", trimmedValue);
+    		} 
+        }
         
-		// Add various types of data
-		snprintf(trimmedValue,sizeof(trimmedValue)-1,"%.2f", temp);
-		jw.insertKeyValue("encTemp", trimmedValue);
-		
-		snprintf(trimmedValue,sizeof(trimmedValue)-1, "%.2f", pressure);
-		jw.insertKeyValue("pressure", trimmedValue);
-		
-		snprintf(trimmedValue,sizeof(trimmedValue)-1, "%.2f", humidity);
-		jw.insertKeyValue("humidity", trimmedValue);        
+        
+        http_request_t request; 
+        http_response_t response;  
+        
+        // EmonCMS post to the node on port 80
+        request.hostname = _hostName;
+        request.port = 80;
+        request.path = String::format("/input/post?node=%s&fulljson=%s&apikey=%s", _deviceName.c_str(),jw.getBuffer(), _apiKey.c_str());
+        
+        http.get(request, response, headers);   
+        
+        stat = (response.status == 200);
+        
+        // Log this via the hardcoded webhook, if debugging is turned on
+        if( _debugLogging)
+        {
+            Particle.publish("sensDebugLog", request.path, PRIVATE);    
+        }
     }
     
-    
-    http_request_t request; 
-    http_response_t response;  
-    
-    // EmonCMS post to the node on port 80
-    request.hostname = _hostName;
-    request.port = 80;
-    request.path = String::format("/input/post?node=%s&fulljson=%s&apikey=%s", _deviceName.c_str(),jw.getBuffer(), _apiKey.c_str());
-    
-    http.get(request, response, headers);   
-    
-    Particle.publish("INFO-json", request.path);
-    Particle.publish("INFO-json-res", response.body);
-    
-    return (response.status == 200);
+    return stat;
 }
  
  // Private functions
@@ -187,3 +247,7 @@ bool EmonLink::postInternalSensorData(float temp, float pressure, float humidity
  }
  
 
+void EmonLink::setDebugLogging(bool logging)
+{
+    _debugLogging = logging;
+}

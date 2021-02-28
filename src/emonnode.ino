@@ -31,9 +31,11 @@
 
 #include "EmonLink.h"
 #include "EnvNode.h"
+#include "dysonController.h"
 
 EnvNode envNode;
 EmonLink emonLink;
+DysonController dysonController;
 
 
 // Simple variable output from our devices
@@ -42,6 +44,7 @@ double enclosureTemperature;
 double pressure;
 double humidity;
 
+Timer sensorInitTimer(20000, searchForSensors);
 Timer provisioningTimer(10000, provisionEmonCMSNode);
 Timer measurementTimer(30000, refreshSensorReadings);
 
@@ -49,10 +52,13 @@ Timer measurementTimer(30000, refreshSensorReadings);
 String myCloudName;
 char dev_name[32] = "";
 bool publishName = false;
+bool debugLogging = false;
+bool dysonControl = false;
 
 // Some control flags
 bool attemptCMSProvisioning = false;
 bool takeSensorMeasurement = false;
+bool attemptSensorInit = false;
 bool resetFlag = false;
 
 int  reportFailureCount = 0;
@@ -69,6 +75,8 @@ void setup() {
     
     //  Remote Reset Particle Function
     Particle.function("reset", cloudResetFunction);
+    Particle.function("debug", toggleDebugFunction);
+    Particle.function("dyson", setDysonControl);
     
     // Publish some variables to play with in the console
     Particle.variable("temperature", temperature);  
@@ -76,19 +84,25 @@ void setup() {
     Particle.variable("pressure", pressure); 
     Particle.variable("humidity", humidity); 
     
-    // Initialise our shared variables
+    // Initialise our shared variabled
     temperature = 255.0;
     enclosureTemperature = 255.0;
     humidity = 255.0;
     pressure = 0.0;
 
-    // Initialise the sensor handler
+    // Initialise the sensor handler first time
+    // If it doesn't work, we'll retry on a timer
     envNode.initSensors();
     
     // Setup some timers to trigger provisioning, and temperature measurement
     // They provision our device to emonCMS
     provisioningTimer.start();
     measurementTimer.start();
+    
+    // If both sensors not found, start the rettry timer
+    if( !envNode.bmeFound() || !envNode.ds18Found() ) {
+        sensorInitTimer.start();
+    }
     
     // Get my device name
     Particle.subscribe("particle/device/name", nameEventHandler);
@@ -106,14 +120,66 @@ void loop() {
     }
     
     // Now check for timer triggered actions
+    
+    if( attemptSensorInit) 
+    {
+        // The timer will turn this back on, if running
+        attemptSensorInit = false;
+        
+        Particle.publish("INFO", "Retrying searching for sensors");
+        
+        envNode.initSensors();
+        
+        String bmeMsg = "I will ";
+        if( !envNode.bmeFound())
+        {
+            bmeMsg.concat("NOT currently be able to ");
+        }
+        bmeMsg.concat("report BME280 sensor data");
+        Particle.publish("INFO",bmeMsg);
+            
+        String ds18Msg = "I will ";
+        if( !envNode.ds18Found())
+        {
+            ds18Msg.concat("NOT currently be able to ");    
+        }
+        ds18Msg.concat("report DS18B20 sensor data");
+        Particle.publish("INFO",ds18Msg);
+            
+        // If we found both sensors, we're done. Kill time timer.
+        if( envNode.bmeFound() && envNode.ds18Found()) {
+            sensorInitTimer.stop();       // No need to search again
+        }        
+    }
+    
+    
     if(attemptCMSProvisioning)
     {
+        // The timer will turn this back on, if running
         attemptCMSProvisioning = false;
 
         if( emonLink.attemptProvisioning())
         {
             Particle.publish("INFO","Provisioned and ready to talk to emonpi");
-            provisioningTimer.stop();       // Kill the timer. Currenlty there is no way to reprovision a node, we'd have to add that function.
+            // What will we publish?
+            
+            String bmeMsg = "I will ";
+            if( !envNode.bmeFound())
+            {
+                bmeMsg.concat("NOT currently be able to ");
+            }
+            bmeMsg.concat("report BME280 sensor data");
+            Particle.publish("INFO",bmeMsg);
+            
+            String ds18Msg = "I will ";
+            if( !envNode.ds18Found())
+            {
+                ds18Msg.concat("NOT currently be able to ");    
+            }
+            ds18Msg.concat("report DS18B20 sensor data");
+            Particle.publish("INFO",ds18Msg);
+            
+            provisioningTimer.stop();       // Kill the timer. To reprovision a node, force a reboot via the Particle console.
         }
         else
         {
@@ -195,15 +261,24 @@ void loop() {
         Particle.publish("Debug", "Remote Reset Initiated", 300, PRIVATE);
         System.reset();
     }
+    
 
 }
 
 
 // Attempts provisioning from emonCMS service
-
 void provisionEmonCMSNode(void)
 {
     attemptCMSProvisioning = true;
+}
+
+void searchForSensors(void)
+{
+    // If either sensor is not detected, try again
+    // All our nodes should have both sensors, but sometimes finding the DS18 is not reliable
+    if( !envNode.bmeFound() || !envNode.ds18Found() ) {
+        attemptSensorInit = true;    
+    }
 }
 
 // Handler which gets our Sensor readings
@@ -226,3 +301,18 @@ int cloudResetFunction(String command) {
     return 0;
 }
 
+// For now just a dumb function that toggles debug state
+// Debug state writes to google sheets via our configured webhook
+int toggleDebugFunction(String command) {
+    debugLogging = !debugLogging;  
+    emonLink.setDebugLogging(debugLogging);
+    
+    return 0;
+}
+
+// Turn of/off controlling the Dyson remote control
+int setDysonControl(String command) {
+   
+   dysonController.powerOn();
+   return 0; 
+}

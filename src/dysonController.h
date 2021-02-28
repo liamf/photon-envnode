@@ -1,9 +1,7 @@
-/*
- * This app is the emoncms node for inside/outside environment monitors
- *
- * This class handles the bme280 and 18b20 sensors
- * It also supports an IR blaster used for customised device remote control
- * Currently the IR blaster is just used for Dyson AM09 control
+/* This app is the emoncms node for inside/outside environment monitors
+ * and IR control of a dyson heater 
+ * 
+ * This class handles the Dyson AM09 heater
  *
  * Liam Friel
  *
@@ -31,45 +29,39 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef envnode_h
-#define envnode_h
+#ifndef __dysonController_h
+#define __dysonController_h
+        
+#include <IRremoteLearn.h>
 
-#include <Particle.h>
+// These are the learned IR commands for the Dyson AM09
 
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-#include <DS18B20.h>
+// Our notes are built to use TX as the send pin
+const int SEND_PIN = TX;
 
-// The pin the DS18B20 is connected to (if mounted)
-const int16_t dsData = D6;
-
-#define MAX_DS18_RETRY  4
-
-class EnvNode
+class DysonController
 {
         public:
-            EnvNode(void);
+            DysonController(void);
             
-            void initSensors(void);  
+            void powerOn(void);
+            void powerOff(void);
             
-            float getEnclosureTemp(void);
-            float getPressure(void);
-            float getHumidity(void);
+            void tempUp(void);
+            void tempDown(void);
             
-            float getExternalTemp(void);
+            void speedUp(void);
+            void speedDown(void);
             
-            bool bmeFound(void);
-            bool ds18Found(void);
-        
+            void diffuseMode();
+            void directMode();
+            
+            void setTemp(int);
+            
         private:
         
-          
-            bool _bmeFound;
-            bool _ds18Found;
-            
             
 };
 
 #endif
+

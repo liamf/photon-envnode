@@ -37,9 +37,11 @@
  #include <Particle.h>
  #include <HttpClient.h>
  #include <JsonParserGeneratorRK.h>
+ #include <math.h>
  
  // If we fail to report this number of times, we'll try to reprovision
  #define MAX_REPORT_RETRIES 1000
+
  
  class EmonLink
  {
@@ -59,6 +61,8 @@
         bool postExternalSensorData(float temp);
         bool postInternalSensorData(float temp, float pressure, float humidity);
         
+        void setDebugLogging(bool);
+        
     private:
 
         bool getProvisioningData(void); // Call the emonCMS node and ask for some key information
@@ -69,6 +73,7 @@
         bool postToEmonCMS(String jsonPayload);
         
         bool _isProvisioned;
+        bool _debugLogging;
         
         String _apiKey;
         String _hostName;
@@ -77,6 +82,7 @@
         String _myID;           // Device ID - unique
         String _deviceName;     // The name of this device in the particle cloud
         String _emonName;       // Name returned by emonCMS 
+        
  }; 
  
  

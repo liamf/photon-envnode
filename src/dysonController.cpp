@@ -1,9 +1,7 @@
 /*
  * This app is the emoncms node for inside/outside environment monitors
- *
- * This class handles the bme280 and 18b20 sensors
- * It also supports an IR blaster used for customised device remote control
- * Currently the IR blaster is just used for Dyson AM09 control
+ * 
+ * This class handles the dyson AM09 heat/cool fan
  *
  * Liam Friel
  *
@@ -31,45 +29,61 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef envnode_h
-#define envnode_h
+#include "dysonController.h"
 
-#include <Particle.h>
+// defaults to TX pin if no pin specified, see IRsend::IRsend(int txpin) header for PWM pins available
+IRsend irsend(SEND_PIN);
 
-#include <Wire.h>
-#include <SPI.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-#include <DS18B20.h>
-
-// The pin the DS18B20 is connected to (if mounted)
-const int16_t dsData = D6;
-
-#define MAX_DS18_RETRY  4
-
-class EnvNode
+DysonController::DysonController(void)
 {
-        public:
-            EnvNode(void);
-            
-            void initSensors(void);  
-            
-            float getEnclosureTemp(void);
-            float getPressure(void);
-            float getHumidity(void);
-            
-            float getExternalTemp(void);
-            
-            bool bmeFound(void);
-            bool ds18Found(void);
-        
-        private:
-        
-          
-            bool _bmeFound;
-            bool _ds18Found;
-            
-            
+    
 };
 
-#endif
+
+void DysonController::powerOn(void)
+{
+    unsigned int buffer[4] = {0x24, 0x9E, 0xB3, 0x25};
+    irsend.sendRaw(buffer, 4, 32);
+    delay(1000);    
+}
+
+void DysonController::powerOff(void)
+{
+    
+}
+            
+void DysonController::tempUp(void)
+{
+    
+}
+
+void DysonController::tempDown(void)
+{
+    
+}
+            
+void DysonController::speedUp(void)
+{
+    
+}
+
+void DysonController::speedDown(void)
+{
+    
+}
+    
+void DysonController::diffuseMode()
+{
+    
+}
+
+void DysonController::directMode()
+{
+    
+}
+        
+void DysonController::setTemp(int newTemp)
+{
+    
+}
+

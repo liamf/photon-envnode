@@ -2,7 +2,6 @@
  * This app is the emoncms node for inside/outside environment monitors
  * 
  * This class handles the bme280 and 18b20 sensors
- * It also supports an IR blaster used for customised device remote control
  *
  * Liam Friel
  *
@@ -42,15 +41,20 @@ EnvNode::EnvNode(void)
     
 };
 
-// FInd the bme280 and ds18b20 sensors (if present)
+// Find the bme280 and ds18b20 sensors (if present)
 // We can use these later to read internal/external team and the other environment values
+// The caller might call this multiple times (since finding the DS18 does not seem to be 100% reliable) so we make it safe to call multiple times
 void EnvNode::initSensors(void)
 {
     // Find the BME280
-    _bmeFound = bmeSensor.begin();
+    if(!_bmeFound) {
+        _bmeFound = bmeSensor.begin();
+    }
     
     // See if we can find an external sensor
-    _ds18Found = extDS18.search();
+    if( !_ds18Found) {
+        _ds18Found = extDS18.search();
+    }
 
 }
 
